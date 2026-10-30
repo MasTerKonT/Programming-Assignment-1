@@ -6,12 +6,33 @@ SnakeBody::SnakeBody(SnakeBody &&other) noexcept
     : head(nullptr), tail(nullptr), length(0)
 {
     // TODO: Take over other's segments. 'other' must be left empty but valid.
+    head = other.head;
+    tail = other.tail;
+    length = other.length;
+
+    other.head = nullptr;
+    other.tail = nullptr;
+    other.length = 0;
 }
 
 SnakeBody &SnakeBody::operator=(SnakeBody &&other) noexcept
 {
     // TODO: Same as the move constructor, but this body may already own segments
     // (they must not leak).
+    if (this == &other){
+        return *this;
+    }
+
+    clear();
+    
+    head = other.head;
+    tail = other.tail;
+    length = other.length;
+
+    other.head = nullptr;
+    other.tail = nullptr;
+    other.length = 0;
+
     return *this;
 }
 
@@ -63,6 +84,17 @@ SnakeBody SnakeBody::splitAt(int row, int col)
 void SnakeBody::clear()
 {
     // TODO: Delete every segment. The body must be empty and usable afterwards.
+    Segment *ptr = head;
+
+    while (ptr != nullptr){
+        Segment *nextptr = ptr->getNext();
+        delete ptr;
+        ptr = nextptr;
+    }
+
+    head = nullptr;
+    tail = nullptr;
+    length = 0;
 }
 
 // Given ready

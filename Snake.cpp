@@ -47,12 +47,32 @@ void Snake::reverse()
     // TODO: Reverse the body. New direction: from the new second segment towards the new head.
     //   e.g. head (2,1), second (2,2)  -> LEFT
     // If the snake has length 1, the direction just becomes the opposite.
+    
+    if (getLength() == 1){
+        direction = oppositeDirection(direction);
+        return;
+    }
+
+    body.reverse();
+
     Segment *head = body.getHead();
     Segment *neck = head->getNext();
 
-    body.reverse();
     int dr = head->getRow() - neck->getRow();
     int dc = head->getCol() - neck->getCol();
+
+    if (dr == 1){
+        direction = Direction::DOWN;
+    }
+    else if (dr == -1){
+        direction = Direction::UP;
+    }
+    else if (dc == 1){
+        direction = Direction::RIGHT;
+    }
+    else if (dc == -1){
+        direction = Direction::LEFT;
+    }
 
 }
 
