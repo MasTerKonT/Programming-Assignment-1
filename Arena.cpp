@@ -23,23 +23,91 @@ static bool isSnakeId(const std::string &s)
 Snake *Arena::findSnake(char id) const
 {
     // TODO: Return the ALIVE snake with this id, or nullptr.
+
+    Snake *current = firstSnake;
+    while(current != nullptr){
+        if(current->getId() == id && current->isAlive() == true){
+            return current;
+        }
+        current = current->getNext();
+    }
     return nullptr;
 }
 
 void Arena::addSnake(Snake *s)
 {
     // TODO: Append s to the end of the player list (turn order = spawn order).
+    if (firstSnake == nullptr){
+        firstSnake = s;
+        lastSnake = s;
+    }
+
+    else{
+        lastSnake->setNext(s);
+        lastSnake = s;
+    }
+    
 }
 
 void Arena::clearSnakes()
 {
     // TODO: Delete every snake in the player list, reset the list
     // and clear the leaderboard.
+
+    Snake *current = firstSnake;
+    while(current != nullptr){
+        Snake *next = current->getNext();
+        delete current;
+        current = next;
+    }
+    firstSnake = nullptr;
+    lastSnake = nullptr;
+    leaderboard.clear();
 }
 
 void Arena::removeDeadSnakes()
 {
     // TODO: Unlink and delete every snake with isAlive() == false.
+
+    Snake *prev = nullptr;
+    Snake *current = firstSnake;
+
+    while(current != nullptr){
+        if(current->isAlive() == false && current == firstSnake){
+            if(firstSnake == lastSnake){
+                delete current;
+                firstSnake = nullptr;
+                lastSnake = nullptr;
+                return;
+            }
+            Snake *next = current->getNext();
+            delete current;
+            current = next;
+            firstSnake = current;
+        }
+
+        else if(current->isAlive() == false && current != firstSnake && current != lastSnake){
+            Snake *next = current->getNext();
+            prev->setNext(current->getNext());
+            delete current;
+            current = next;
+        }
+
+        else if(current->isAlive() == false && current == lastSnake){
+            prev->setNext(nullptr);
+            delete current;
+            current = nullptr;
+            lastSnake = prev;
+            
+        }
+
+        else{
+            Snake *next = current->getNext();
+            prev = current;
+            current = next;
+            
+        }
+    }
 }
 
 void Arena::killSnake(Snake *s)
@@ -50,6 +118,16 @@ void Arena::killSnake(Snake *s)
     //  - Every cell of its body becomes FOOD_CELL on the board.
     //  - Mark it dead and remove it from the leaderboard.
     //  Note: tick() may still be iterating over the player list.
+    std::cout << "Snake " << s->getId() << " died with length " << s->getLength() << " and score " << s->getScore() << "." << std::endl;
+    Segment *ptr = s->getBody().getHead();
+    while(ptr != nullptr){
+        Segment *nextPtr = ptr->getNext();
+        board.set(ptr->getRow(), ptr->getCol(), FOOD_CELL);
+        ptr = nextPtr;
+    }
+    s->setAlive(false);
+    leaderboard.remove(s);
+
 }
 
 // ---------------------------------------------------------------- movement
@@ -64,6 +142,34 @@ void Arena::moveSnake(Snake *s)
     //   "Snake A bit Snake B at (nr,nc). Snake B lost K segment(s)."
     //   "Snake A ate food at (nr,nc)."
     // The board must always show the head as the uppercase id, body as lowercase.
+    int row, col;
+    s->getNextHeadPosition(row,col);
+    int tr, tc;
+    
+
+    if(!board.inBounds(row, col)){
+        std::cout << "Snake" << s->getId() << "hit a wall at (" << row << "," << col << ")." << std::endl;
+        killSnake(s);
+        return;
+    }
+
+    else{
+        char cellType = board.get(row,col);
+        if(cellType == EMPTY_CELL){
+            board.set(tr, tc, EMPTY_CELL);
+            board.set(s->getBody().getHead()->getRow(),s->getBody().getHead()->getCol(), tolower(s->getId()));
+            s->getBody().popBack(tr,tc);
+            s->getBody().pushFront(row,col);
+            board.set(row,col, s->getId());
+
+        }
+        else if(cellType == FOOD_CELL){
+            s->getBody().pushFront(row,col);
+        }
+        else if(cellType == WALL_CELL){
+
+        }
+    }
 }
 
 void Arena::tick()
