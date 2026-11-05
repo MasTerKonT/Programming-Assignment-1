@@ -145,29 +145,95 @@ void Arena::moveSnake(Snake *s)
     int row, col;
     s->getNextHeadPosition(row,col);
     int tr, tc;
+    Segment *oldHead = s->getBody().getHead();
+    Segment *oldTail = s->getBody().getTail();
     
 
     if(!board.inBounds(row, col)){
-        std::cout << "Snake" << s->getId() << "hit a wall at (" << row << "," << col << ")." << std::endl;
+        std::cout << "Snake " << s->getId() << " hit a wall at (" << row << "," << col << ")." << std::endl;
         killSnake(s);
         return;
     }
 
     else{
         char cellType = board.get(row,col);
-        if(cellType == EMPTY_CELL){
-            board.set(tr, tc, EMPTY_CELL);
-            board.set(s->getBody().getHead()->getRow(),s->getBody().getHead()->getCol(), tolower(s->getId()));
+        if(cellType == EMPTY_CELL || (row == oldTail->getRow() && col == oldTail->getCol())){
+            board.set(oldHead->getRow(),oldHead->getCol(), tolower(s->getId()));
             s->getBody().popBack(tr,tc);
+            board.set(tr, tc, EMPTY_CELL);
             s->getBody().pushFront(row,col);
             board.set(row,col, s->getId());
-
+            return;
         }
+
         else if(cellType == FOOD_CELL){
+            board.set(oldHead->getRow(),oldHead->getCol(), tolower(s->getId()));
             s->getBody().pushFront(row,col);
+            board.set(row,col, s->getId());
+            s->addScore(1);
+            leaderboard.reposition(s);
+            std::cout << "Snake " << s->getId() << " ate food at (" << row << "," << col << ")." << std::endl;
+            return;
         }
-        else if(cellType == WALL_CELL){
 
+        else if(cellType == WALL_CELL){
+            std::cout << "Snake " << s->getId() << " hit a wall at (" << row << "," << col << ")." << std::endl;
+            killSnake(s);
+            return;
+        }
+
+        else if(cellType == tolower(s->getId()) && !(row == oldTail->getRow() && col == oldTail->getCol())){
+            std::cout << "Snake " << s->getId() << " bit itself at (" << row << "," << col << ")." << std::endl;
+            killSnake(s);
+            return;
+        }
+
+        else if(islower(cellType)){
+            Snake *hitSnake = findSnake(toupper(cellType));
+            SnakeBody limb = hitSnake->getBody().splitAt(row,col);
+            int limbLength = limb.getLength();
+
+            Segment *ptr = limb.getHead();
+            while(ptr != nullptr){
+                Segment *nextPtr = ptr->getNext();
+                board.set(ptr->getRow(), ptr->getCol(), FOOD_CELL);
+                ptr = nextPtr;
+            }
+
+            std::cout << "Snake " << s->getId() << " bit Snake " << hitSnake->getId() << " at ("<< row << "," << col <<  "). Snake " << hitSnake->getId() << " lost " << limbLength << " segment(s)." << std::endl;
+
+            board.set(oldHead->getRow(),oldHead->getCol(), tolower(s->getId()));
+            s->getBody().pushFront(row,col);
+            board.set(row,col, s->getId());
+            s->addScore(1);
+            leaderboard.reposition(s);
+            std::cout << "Snake " << s->getId() << " ate food at (" << row << "," << col << ")." << std::endl;
+            return;
+        }
+
+        else if(isupper(cellType)){
+            Snake *hitSnake = findSnake(toupper(cellType));
+            Segment *oldHitHead = hitSnake->getBody().getHead();
+            std::cout << "Snake " << s->getId() << " and Snake " << hitSnake->getId() << " collided head-on at ("<< row << "," << col <<  ")." << std::endl;
+            if(s->getLength() > hitSnake->getLength()){
+                killSnake(hitSnake);
+                board.set(oldHead->getRow(),oldHead->getCol(), tolower(s->getId()));
+                s->getBody().pushFront(row,col);
+                board.set(row,col, s->getId());
+                s->addScore(1);
+                leaderboard.reposition(s);
+                std::cout << "Snake " << s->getId() << " ate food at (" << row << "," << col << ")." << std::endl;
+            }
+
+            else if(s->getLength() < hitSnake->getLength()){
+                killSnake(s);
+            }
+
+            else{
+                killSnake(s);
+                killSnake(hitSnake);
+            }
+            return;
         }
     }
 }
@@ -179,6 +245,17 @@ void Arena::tick()
     //  - every alive snake moves once, in player list order
     //  - snakes that died during this tick must not move
     //  - dead snakes must be removed from the player list before the tick ends
+    tickCount +=1;
+    std::cout << "--- Tick " << tickCount << " ---" << std::endl;
+
+    Snake *current = firstSnake;
+    while(current != nullptr){
+        if(current->isAlive()){
+            moveSnake(current);
+        }
+        current = current->getNext();
+    }
+    removeDeadSnakes();
 }
 
 // ---------------------------------------------------------------- commands
@@ -189,6 +266,14 @@ void Arena::cmdInitBoard(const std::string &args)
     //  Resets everything: snakes, leaderboard, tick counter.
     //  Create the new board with move assignment:  board = Board(r, c);
     //  "Board initialized with <r> rows and <c> columns."
+    std::istringstream ss(args);
+    int r, c;
+    ss >> r >> c;
+
+    clearSnakes();
+    tickCount = 0;
+    board = Board(r, c);
+    std::cout << "Board initialized with " << r << " rows and " << c << " columns." << std::endl;
 }
 
 // Given ready, as an example for parsing.
