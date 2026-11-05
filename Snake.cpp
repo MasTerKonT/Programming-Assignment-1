@@ -9,13 +9,13 @@ bool Snake::turn(Direction newDir)
     // the head onto the neck, return false and change nothing. Otherwise set the
     // direction and return true. (Length 1: no neck, every turn is valid.)
     Segment *head = body.getHead();
-    Segment *neck = head->getNext();
-
+    
     if (getLength() == 1){
         direction =  newDir;
         return true;
     }
 
+    Segment *neck = head->getNext();
     int r = head->getRow();
     int c = head->getCol();
 
